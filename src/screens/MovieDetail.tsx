@@ -6,36 +6,35 @@ import {
   View,
   Text,
   Image,
+  TouchableOpacity, // Menambahkan TouchableOpacity untuk mendeteksi klik pada ikon heart
   StyleSheet,
 } from 'react-native'
 import { FontAwesome } from '@expo/vector-icons' // Mengimpor ikon FontAwesome
 import { API_URL, API_ACCESS_TOKEN } from '@env' // Mengimpor variabel lingkungan dari file .env
 import MovieList from '../components/movies/MovieList' // Mengimpor komponen MovieList dari folder components
+import AsyncStorage from '@react-native-async-storage/async-storage' // Mengimpor AsyncStorage untuk penyimpanan lokal
 
 // Mendefinisikan komponen MovieDetail yang menerima props, termasuk route untuk mendapatkan parameter navigasi
 const MovieDetail = ({ route, navigation }: any): JSX.Element => {
-  // Mengambil id dari parameter route
-  const { id } = route.params
+  const { id } = route.params // Mengambil id dari parameter route
   const [movie, setMovie] = useState<any>(null) // State untuk menyimpan detail film
   const [recommendations, setRecommendations] = useState<any[]>([]) // State untuk menyimpan rekomendasi film
+  const [isFavorite, setIsFavorite] = useState<boolean>(false) // State untuk status favorit
 
   // Fungsi fetchData untuk mengambil data dari API
   const fetchData = (): void => {
-    // Memeriksa apakah variabel lingkungan API_URL dan API_ACCESS_TOKEN telah diatur
     if (API_URL == null || API_ACCESS_TOKEN == null) {
-      throw new Error('ENV not found') // Menampilkan kesalahan jika tidak ditemukan
+      throw new Error('ENV not found') // Menampilkan kesalahan jika ENV tidak ditemukan
     }
 
-    // Mengatur opsi untuk permintaan API dengan metode GET dan header yang dibutuhkan
     const options = {
       method: 'GET',
       headers: {
-        accept: 'application/json', // Menerima respons dalam format JSON
+        accept: 'application/json',
         Authorization: `Bearer ${API_ACCESS_TOKEN}`, // Menggunakan token akses dalam header Authorization
       },
     }
 
-    // Menggunakan fetch API untuk mengambil data dari API_URL dengan opsi yang telah ditentukan
     fetch(`${API_URL}/movie/${id}?language=en-US`, options)
       .then((response) => response.json()) // Mengurai respons menjadi objek JSON
       .then((response) => {
@@ -48,16 +47,14 @@ const MovieDetail = ({ route, navigation }: any): JSX.Element => {
 
   // Fungsi fetchRecommendations untuk mengambil data rekomendasi film dari API
   const fetchRecommendations = (): void => {
-    // Mengatur opsi untuk permintaan API dengan metode GET dan header yang dibutuhkan
     const options = {
       method: 'GET',
       headers: {
-        accept: 'application/json', // Menerima respons dalam format JSON
+        accept: 'application/json',
         Authorization: `Bearer ${API_ACCESS_TOKEN}`, // Menggunakan token akses dalam header Authorization
       },
     }
 
-    // Menggunakan fetch API untuk mengambil data rekomendasi film
     fetch(
       `${API_URL}/movie/${id}/recommendations?language=en-US&page=1`,
       options,
@@ -71,10 +68,60 @@ const MovieDetail = ({ route, navigation }: any): JSX.Element => {
       })
   }
 
+  // Fungsi untuk menambahkan film ke daftar favorit
+  const addFavorite = async (movie: any): Promise<void> => {
+    try {
+      const initialData: string | null =
+        await AsyncStorage.getItem('@FavoriteList')
+      let favMovieList: any[] = initialData ? JSON.parse(initialData) : []
+
+      favMovieList.push(movie) // Menambahkan film ke daftar favorit
+      await AsyncStorage.setItem('@FavoriteList', JSON.stringify(favMovieList)) // Menyimpan daftar favorit ke AsyncStorage
+      setIsFavorite(true) // Mengubah status favorit menjadi true
+    } catch (error) {
+      console.log(error) // Menampilkan kesalahan jika proses gagal
+    }
+  }
+
+  // Fungsi untuk menghapus film dari daftar favorit
+  const removeFavorite = async (id: number): Promise<void> => {
+    try {
+      const initialData: string | null =
+        await AsyncStorage.getItem('@FavoriteList')
+      if (initialData) {
+        let favMovieList: any[] = JSON.parse(initialData)
+        favMovieList = favMovieList.filter((movie) => movie.id !== id) // Menghapus film dari daftar favorit
+        await AsyncStorage.setItem(
+          '@FavoriteList',
+          JSON.stringify(favMovieList),
+        ) // Menyimpan daftar favorit yang diperbarui ke AsyncStorage
+        setIsFavorite(false) // Mengubah status favorit menjadi false
+      }
+    } catch (error) {
+      console.log(error) // Menampilkan kesalahan jika proses gagal
+    }
+  }
+
+  // Fungsi untuk memeriksa apakah film sudah menjadi favorit
+  const checkIsFavorite = async (id: number): Promise<void> => {
+    try {
+      const initialData: string | null =
+        await AsyncStorage.getItem('@FavoriteList')
+      if (initialData) {
+        const favMovieList: any[] = JSON.parse(initialData)
+        const isFav = favMovieList.some((movie) => movie.id === id) // Memeriksa apakah film ada dalam daftar favorit
+        setIsFavorite(isFav) // Mengatur state isFavorite berdasarkan hasil pemeriksaan
+      }
+    } catch (error) {
+      console.log(error) // Menampilkan kesalahan jika proses gagal
+    }
+  }
+
   // Mengambil data film dan rekomendasi saat komponen dimuat
   useEffect(() => {
     fetchData() // Memanggil fungsi fetchData
     fetchRecommendations() // Memanggil fungsi fetchRecommendations
+    checkIsFavorite(id) // Memeriksa status favorit saat komponen dimuat
   }, [id])
 
   // Mengembalikan elemen UI untuk komponen MovieDetail
@@ -97,6 +144,23 @@ const MovieDetail = ({ route, navigation }: any): JSX.Element => {
                 </Text>
                 {/* Menampilkan rating dengan bintang */}
               </View>
+              {/* Tambahkan TouchableOpacity untuk ikon heart */}
+              <TouchableOpacity
+                style={styles.heartIcon}
+                onPress={() => {
+                  if (isFavorite) {
+                    removeFavorite(movie.id) // Hapus dari favorit jika sudah ada
+                  } else {
+                    addFavorite(movie) // Tambahkan ke favorit jika belum ada
+                  }
+                }}
+              >
+                <FontAwesome
+                  name={isFavorite ? 'heart' : 'heart-o'} // Menampilkan ikon heart penuh atau kosong berdasarkan isFavorite
+                  size={30}
+                  color="red"
+                />
+              </TouchableOpacity>
             </View>
             <Text style={styles.title}>{movie.title}</Text>
             {/* Menampilkan judul film */}
@@ -164,6 +228,12 @@ const styles = StyleSheet.create({
     fontSize: 16, // Mengatur ukuran font untuk rating
     color: 'yellow', // Mengatur warna teks rating
     marginLeft: 5, // Menambahkan margin kiri untuk teks rating
+  },
+  heartIcon: {
+    position: 'absolute', // Mengatur posisi absolut untuk ikon heart
+    top: 10, // Mengatur jarak dari atas poster
+    right: 10, // Mengatur jarak dari kanan poster
+    padding: 10, // Menambahkan padding untuk area klik
   },
   title: {
     fontSize: 24, // Mengatur ukuran font untuk judul
