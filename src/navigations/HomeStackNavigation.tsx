@@ -4,9 +4,11 @@ import React from 'react'
 // Mengimpor createNativeStackNavigator dari @react-navigation/native-stack
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
-// Mengimpor layar Home dan MovieDetail yang akan digunakan dalam stack navigasi
+// Mengimpor layar Home, MovieDetail, CategorySearch, dan CategorySearchResult yang akan digunakan dalam stack navigasi
 import Home from '../screens/Home'
 import MovieDetail from '../screens/MovieDetail'
+import CategorySearch from '../components/search/CategorySearch'
+import CategorySearchResult from '../screens/CategorySearchResult'
 
 // Membuat objek stack navigator untuk navigasi bertingkat/bertumpuk
 const Stack = createNativeStackNavigator()
@@ -26,6 +28,18 @@ const HomeStackNavigation = (): JSX.Element => (
       name="MovieDetail" // Nama layar sebagai "MovieDetail"
       component={MovieDetail} // Komponen yang akan dirender untuk layar ini
       options={{ title: 'Movie Detail' }} // Menampilkan judul khusus di header bar
+    />
+    {/* Mendefinisikan layar CategorySearch untuk navigasi ke layar pencarian berdasarkan kategori */}
+    <Stack.Screen
+      name="CategorySearch" // Nama layar sebagai "CategorySearch"
+      component={CategorySearch} // Komponen yang akan dirender untuk layar ini
+      options={{ title: 'Category Search' }} // Menampilkan judul khusus di header bar
+    />
+    {/* Mendefinisikan layar CategorySearchResult untuk menampilkan hasil pencarian berdasarkan kategori */}
+    <Stack.Screen
+      name="CategorySearchResult" // Nama layar sebagai "CategorySearchResult"
+      component={CategorySearchResult} // Komponen yang akan dirender untuk layar ini
+      options={{ title: 'Search Results' }} // Menampilkan judul khusus di header bar
     />
   </Stack.Navigator>
 )
